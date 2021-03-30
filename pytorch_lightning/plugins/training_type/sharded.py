@@ -70,3 +70,19 @@ class DDPShardedPlugin(DDPPlugin):
     @property
     def lightning_module(self) -> LightningModule:
         return unwrap_lightning_module_sharded(self._model)
+
+
+    def pre_dispatch(self) -> None:
+        """
+        Relative to the DDP plugin, swap the ordering of :meth:`consolidate_state_dict`
+        and :meth:`model_to_device` to move the wrapped module to device
+        """
+        if self.sync_batchnorm:
+            self.model = self.configure_sync_batchnorm(self.model)
+
+        self.configure_ddp()
+
+        # move the model to the correct device
+        self.model_to_device()
+
+        self.barrier()
